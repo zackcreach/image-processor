@@ -26,6 +26,7 @@ package:
 
 plugins:
   - serverless-plugin-webpack
+  - serverless-offline
 
 functions:
   getImage:
@@ -51,6 +52,10 @@ functions:
       include:
         - src/uploadImage/**
 
+custom:
+  webpack:
+    config: ./webpack.config.js
+    series: true # run Webpack in series, useful for large projects. Defaults to false. 
 
 
 # you can add CloudFormation resource templates here
