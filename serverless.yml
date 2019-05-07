@@ -1,8 +1,8 @@
-service: Image-Resizer
+service: image-processor
 
 provider:
   name: aws
-  runtime: nodejs6.10
+  runtime: nodejs8.10
 
   memorySize: 1024 # optional, default is 1024
   timeout: 100 # optional, default is 6
@@ -22,34 +22,34 @@ package:
   individually: true
   # exclude:
   #   - bin/**
-  #   - functions/**
+  #   - src/**
 
 plugins:
-  - serverless-plugin-browserify
+  - serverless-plugin-webpack
 
 functions:
   getImage:
     name: ${self:service}-${self:provider.stage}-getImage
-    handler: functions/getImage/index.handler
+    handler: src/getImage/index.handler
     events:
       - http: GET {proxy+}
     package:
       include:
-        - functions/getImage/**
+        - src/getImage/**
   resizeImage:
     name: ${self:provider.environment.RESIZE_LAMBDA}
-    handler: functions/resizeImage/index.handler
+    handler: src/resizeImage/index.handler
     package:
       include:
-        - functions/resizeImage/**
+        - src/resizeImage/**
   uploadImage:
     name: ${self:service}-${self:provider.stage}-uploadImage
-    handler: functions/uploadImage/index.handler
+    handler: src/uploadImage/index.handler
     events:
       - http: POST /upload
     package:
       include:
-        - functions/uploadImage/**
+        - src/uploadImage/**
 
 
 
