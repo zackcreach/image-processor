@@ -3,7 +3,7 @@
 CACHE/
 .sass-cache/
 db.sqlite3
-
+.webpack/
 static/dist
 
 # begin node gitignore

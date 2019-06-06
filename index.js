@@ -1,5 +1,5 @@
-const getImage = require("./functions/getImage");
-const resizeImage = require("./functions/resizeImage");
+const getImage = require("./src/getImage");
+const resizeImage = require("./src/resizeImage");
 
 module.exports = {
   getImage,

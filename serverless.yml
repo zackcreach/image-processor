@@ -3,31 +3,25 @@ service: image-processor
 provider:
   name: aws
   runtime: nodejs8.10
-
-  memorySize: 1024 # optional, default is 1024
-  timeout: 100 # optional, default is 6
-
+  memorySize: 1024
+  timeout: 30
   stage: dev
   region: us-east-1
-
   role: BucketAccess
 
   environment:
-    BUCKET: "zackcreach-images"
+    BUCKET: "image-processor-assets"
     SLS_DEBUG: "*"
     RESIZE_LAMBDA: ${self:provider.stage}-resizeImage
 
 
 package:
   individually: true
-  # exclude:
-  #   - bin/**
-  #   - src/**
 
 plugins:
-  - serverless-plugin-webpack
+  - serverless-webpack
   - serverless-offline
-
+  
 functions:
   getImage:
     name: ${self:service}-${self:provider.stage}-getImage
@@ -51,14 +45,6 @@ functions:
     package:
       include:
         - src/uploadImage/**
-
-custom:
-  webpack:
-    config: ./webpack.config.js
-    series: true # run Webpack in series, useful for large projects. Defaults to false. 
-
-
-# you can add CloudFormation resource templates here
 
 resources:
   Resources:
