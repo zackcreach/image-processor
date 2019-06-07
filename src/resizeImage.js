@@ -23,10 +23,10 @@ function gmCreator(asset, bucket, resize_options, user_agent) {
       if (resize_options.auto) {
         if (uaDeviceType === "mobile" || uaDeviceType === "wearable") {
           func.resize(1000);
-          func.quality("65");
+          func.quality(65);
         } else {
           func.resize(2000);
-          func.quality("75");
+          func.quality(75);
         }
       }
       if (resize_options.quality) func.quality(resize_options.quality);
