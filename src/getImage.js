@@ -2,8 +2,8 @@ const AWS = require("aws-sdk");
 
 const s3 = new AWS.S3();
 
-const parseQueryParameters = require("../../bin/parseQueryParameters");
-const Errors = require("../../bin/errors");
+const parseQueryParameters = require("../bin/parseQueryParameters");
+const Errors = require("../bin/errors");
 
 function checkS3(key) {
   return new Promise((resolve, reject) => {
@@ -81,7 +81,7 @@ function resize(data) {
   );
 }
 
-function processImage(image_path, query, destination_path) {
+function processImage(image_path, query, destination_path, user_agent) {
   image_path = image_path[0] == "/" ? image_path.substring(1) : image_path;
   return checkS3(image_path)
     .then(metadata => {
@@ -98,7 +98,8 @@ function processImage(image_path, query, destination_path) {
         asset: image_path,
         destination: destination_path,
         bucket: process.env.BUCKET,
-        storage_class: "REDUCED_REDUNDANCY"
+        storage_class: "REDUCED_REDUNDANCY",
+        user_agent: user_agent
       };
       console.log(JSON.stringify(lambda_data));
 
@@ -109,15 +110,19 @@ function processImage(image_path, query, destination_path) {
 
 module.exports.handler = (event, context, callback) => {
   const query = stripQueryParams(event.queryStringParameters);
+  const userAgent = event.headers["User-Agent"];
   const key = generateKey(event.path, query);
   console.log(key);
   return checkS3(key)
     .then(metadata => {
       if (metadata) return getS3(key).then(data => callback(null, data));
       else if (Object.keys(query).length > 0)
-        return processImage(event.path, event.queryStringParameters, key).then(
-          data => callback(null, data)
-        );
+        return processImage(
+          event.path,
+          event.queryStringParameters,
+          key,
+          userAgent
+        ).then(data => callback(null, data));
       return callback(null, Errors.NOT_FOUND);
     })
     .catch(e => {

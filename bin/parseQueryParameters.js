@@ -1,5 +1,6 @@
 function parseQueryParameters(query) {
   const format = {};
+  if (query.a && parseInt(query.a) !== NaN) format.auto = parseInt(query.a);
   if (
     (query.w && parseInt(query.w) !== NaN) ||
     (query.h && parseInt(query.h) !== NaN)

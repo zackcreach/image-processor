@@ -8,12 +8,10 @@ provider:
   stage: dev
   region: us-east-1
   role: BucketAccess
-
   environment:
     BUCKET: "image-processor-assets"
     SLS_DEBUG: "*"
     RESIZE_LAMBDA: ${self:provider.stage}-resizeImage
-
 
 package:
   individually: true
@@ -25,26 +23,17 @@ plugins:
 functions:
   getImage:
     name: ${self:service}-${self:provider.stage}-getImage
-    handler: src/getImage/index.handler
+    handler: src/getImage.handler
     events:
       - http: GET {proxy+}
-    package:
-      include:
-        - src/getImage/**
   resizeImage:
-    name: ${self:provider.environment.RESIZE_LAMBDA}
-    handler: src/resizeImage/index.handler
-    package:
-      include:
-        - src/resizeImage/**
+    name: ${self:service}-${self:provider.stage}-resizeImage
+    handler: src/resizeImage.handler
   uploadImage:
     name: ${self:service}-${self:provider.stage}-uploadImage
-    handler: src/uploadImage/index.handler
+    handler: src/uploadImage.handler
     events:
       - http: POST /upload
-    package:
-      include:
-        - src/uploadImage/**
 
 resources:
   Resources:

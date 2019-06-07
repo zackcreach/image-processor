@@ -10,9 +10,9 @@
   "dependencies": {
     "aws-sdk": "^2.469.0",
     "bluebird": "^3.5.5",
-    "cross-spawn": "^6.0.5",
     "gm": "^1.23.1",
-    "s3-upload-stream": "^1.0.7"
+    "s3-upload-stream": "^1.0.7",
+    "ua-parser-js": "^0.7.19"
   },
   "devDependencies": {
     "@babel/cli": "^7.4.4",
