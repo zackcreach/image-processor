@@ -1,6 +1,5 @@
 function parseQueryParameters(query) {
   const format = {};
-  if (query.a && query.a === "true") format.auto = true;
   if (
     (query.w && parseInt(query.w) !== NaN) ||
     (query.h && parseInt(query.h) !== NaN)
@@ -26,7 +25,7 @@ function parseQueryParameters(query) {
       };
   }
   if (query.f) format.filter = query.f;
-  if (query.q && parseInt(query.q) !== NaN) format.quality = parseInt(query.q);
+  if (query.q) format.quality = query.q;
   if (query.m && parseInt(query.m) !== NaN) format.max = parseInt(query.m);
   if (query.b && query.b.match(/[0-9]{1,}x[0-9]{1,}/g))
     format.blur = query.b.split("x");

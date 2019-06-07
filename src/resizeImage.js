@@ -20,16 +20,22 @@ function gmCreator(asset, bucket, resize_options, user_agent) {
         s3.getObject({ Bucket: bucket, Key: asset }).createReadStream()
       );
       func.options({ timeout: resize_options.timeout || DEFAULT_TIME_OUT });
-      if (resize_options.auto) {
-        if (uaDeviceType === "mobile" || uaDeviceType === "wearable") {
-          func.resize(1000);
-          func.quality(65);
+      if (resize_options.quality) {
+        if (
+          !isNaN(resize_options.quality) &&
+          resize_options.quality === "auto"
+        ) {
+          if (uaDeviceType === "mobile" || uaDeviceType === "wearable") {
+            func.resize(1000);
+            func.quality(65);
+          } else {
+            func.resize(2000);
+            func.quality(75);
+          }
         } else {
-          func.resize(2000);
-          func.quality(75);
+          func.quality(resize_options.quality);
         }
       }
-      if (resize_options.quality) func.quality(resize_options.quality);
       if (resize_options.resize && resize_options.crop)
         func.resize(
           resize_options.resize.width,
