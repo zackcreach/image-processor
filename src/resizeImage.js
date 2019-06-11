@@ -9,9 +9,8 @@ const parser = require("ua-parser-js");
 const DEFAULT_TIME_OUT = 15000;
 
 function gmCreator(asset, bucket, resize_options, user_agent) {
-  // Determine user agent data
-  const ua = parser(user_agent);
-  const uaDeviceType = ua.getDevice().type;
+  // Parse user agent data
+  const userAgent = parser(user_agent);
 
   // function to create a GM process
   return new Promise((resolve, reject) => {
@@ -22,18 +21,23 @@ function gmCreator(asset, bucket, resize_options, user_agent) {
       func.options({ timeout: resize_options.timeout || DEFAULT_TIME_OUT });
       if (resize_options.quality) {
         if (
-          !isNaN(resize_options.quality) &&
+          isNaN(resize_options.quality) &&
           resize_options.quality === "auto"
         ) {
-          if (uaDeviceType === "mobile" || uaDeviceType === "wearable") {
-            func.resize(1000);
-            func.quality(65);
+          if (
+            userAgent.device.type === "mobile" ||
+            userAgent.device.type === "wearable" ||
+            userAgent.device.type === "tablet"
+          ) {
+            func.resize(80);
+            func.quality(1);
           } else {
-            func.resize(2000);
-            func.quality(75);
+            func.resize(1600);
+            func.quality(1);
           }
         } else {
-          func.quality(resize_options.quality);
+          const quality = parseInt(resize_options.quality);
+          func.quality(quality);
         }
       }
       if (resize_options.resize && resize_options.crop)

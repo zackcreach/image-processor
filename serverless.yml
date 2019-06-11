@@ -26,14 +26,23 @@ functions:
     handler: src/getImage.handler
     events:
       - http: GET {proxy+}
+    package:
+      include:
+        - src/getImage.js
   resizeImage:
-    name: ${self:service}-${self:provider.stage}-resizeImage
+    name: ${self:provider.environment.RESIZE_LAMBDA}
     handler: src/resizeImage.handler
+    package:
+      include:
+        - src/resizeImage.js
   uploadImage:
     name: ${self:service}-${self:provider.stage}-uploadImage
     handler: src/uploadImage.handler
     events:
       - http: POST /upload
+    package:
+      include:
+        - src/uploadImage.js
 
 resources:
   Resources:

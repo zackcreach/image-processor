@@ -8,7 +8,10 @@ const Errors = require("../bin/errors");
 function checkS3(key) {
   return new Promise((resolve, reject) => {
     s3.headObject({ Bucket: process.env.BUCKET, Key: key }, (err, metadata) => {
-      if (err && ["NotFound", "Forbidden"].indexOf(err.code) > -1)
+      if (
+        (err && ["NotFound", "Forbidden"].indexOf(err.code) > -1) ||
+        key.indexOf("q=auto") !== -1
+      )
         return resolve();
       else if (err) {
         const e = Object.assign({}, Errors.SOMETHING_WRONG, { err });
@@ -82,6 +85,7 @@ function resize(data) {
 }
 
 function processImage(image_path, query, destination_path, user_agent) {
+  console.log("PROCESSING");
   image_path = image_path[0] == "/" ? image_path.substring(1) : image_path;
   return checkS3(image_path)
     .then(metadata => {
