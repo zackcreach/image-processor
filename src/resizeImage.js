@@ -4,14 +4,10 @@ const AWS = require("aws-sdk");
 
 const s3 = new AWS.S3();
 const S3Stream = require("s3-upload-stream")(s3);
-const parser = require("ua-parser-js");
 
 const DEFAULT_TIME_OUT = 15000;
 
-function gmCreator(asset, bucket, resize_options, user_agent) {
-  // Parse user agent data
-  const userAgent = parser(user_agent);
-
+function gmCreator(asset, bucket, resize_options) {
   // function to create a GM process
   return new Promise((resolve, reject) => {
     try {
@@ -19,27 +15,7 @@ function gmCreator(asset, bucket, resize_options, user_agent) {
         s3.getObject({ Bucket: bucket, Key: asset }).createReadStream()
       );
       func.options({ timeout: resize_options.timeout || DEFAULT_TIME_OUT });
-      if (resize_options.quality) {
-        if (
-          isNaN(resize_options.quality) &&
-          resize_options.quality === "auto"
-        ) {
-          if (
-            userAgent.device.type === "mobile" ||
-            userAgent.device.type === "wearable" ||
-            userAgent.device.type === "tablet"
-          ) {
-            func.resize(80);
-            func.quality(1);
-          } else {
-            func.resize(1600);
-            func.quality(1);
-          }
-        } else {
-          const quality = parseInt(resize_options.quality);
-          func.quality(quality);
-        }
-      }
+      if (resize_options.quality) func.quality(resize_options.quality);
       if (resize_options.resize && resize_options.crop)
         func.resize(
           resize_options.resize.width,
@@ -108,8 +84,7 @@ const EVENT_PARAMS = {
   bucket: { type: "string", required: true },
   resize_options: { type: "object", required: true },
   mime_type: { type: "string", required: true },
-  storage_class: { type: "string", default: "STANDARD" },
-  user_agent: { type: "string", default: "Unknown" }
+  storage_class: { type: "string", default: "STANDARD" }
 };
 const GM_KEYS = [
   "timeout",
@@ -155,7 +130,7 @@ function formatEvent(event) {
 module.exports.handler = (event, context, callback) =>
   formatEvent(event)
     .then(job =>
-      gmCreator(job.asset, job.bucket, job.resize_options, job.user_agent)
+      gmCreator(job.asset, job.bucket, job.resize_options)
         .then(gm =>
           uploadToS3(
             job.destination,
