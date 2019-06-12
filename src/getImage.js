@@ -123,11 +123,11 @@ module.exports.handler = (event, context, callback) => {
       userAgent.device.type === "wearable" ||
       userAgent.device.type === "tablet"
     ) {
-      query.w = 80;
-      query.q = 5;
+      query.w = 800;
+      query.q = 60;
     } else {
-      query.w = 300;
-      query.q = 50;
+      query.w = 1600;
+      query.q = 75;
     }
   }
 
