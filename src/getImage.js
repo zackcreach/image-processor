@@ -117,7 +117,7 @@ module.exports.handler = (event, context, callback) => {
   const query = stripQueryParams(event.queryStringParameters);
   const userAgent = parser(event.headers["User-Agent"]);
 
-  if (query.q === "auto") {
+  if (Object.keys(query).length === 0 && query.constructor === Object) {
     if (
       userAgent.device.type === "mobile" ||
       userAgent.device.type === "wearable" ||
@@ -126,8 +126,8 @@ module.exports.handler = (event, context, callback) => {
       query.w = 800;
       query.q = 60;
     } else {
-      query.w = 1600;
-      query.q = 75;
+      query.w = 1200;
+      query.q = 70;
     }
   }
 
