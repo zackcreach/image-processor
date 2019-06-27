@@ -1,3 +1,4 @@
+# Service name determines bucket name
 service: image-processor
 
 provider:
@@ -5,13 +6,16 @@ provider:
   runtime: nodejs8.10
   memorySize: 1024
   timeout: 30
-  stage: dev
+  stage: prod
   region: us-east-1
   role: BucketAccess
+  apiName: ${self:service}
   environment:
-    BUCKET: "image-processor-assets"
+    BUCKET: ${self:service}-assets
     SLS_DEBUG: "*"
-    RESIZE_LAMBDA: ${self:provider.stage}-resizeImage
+    RESIZE_LAMBDA: ${self:service}-resizeImage
+  deploymentBucket:
+    name: ${self:provider.environment.BUCKET}
 
 package:
   individually: true
@@ -22,7 +26,7 @@ plugins:
   
 functions:
   getImage:
-    name: ${self:service}-${self:provider.stage}-getImage
+    name: ${self:service}-getImage
     handler: src/getImage.handler
     events:
       - http: GET {proxy+}
@@ -36,7 +40,7 @@ functions:
       include:
         - src/resizeImage.js
   uploadImage:
-    name: ${self:service}-${self:provider.stage}-uploadImage
+    name: ${self:service}-uploadImage
     handler: src/uploadImage.handler
     events:
       - http: POST /upload
