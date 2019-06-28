@@ -1,4 +1,3 @@
-# Service name determines bucket name
 service: image-processor
 
 provider:
@@ -6,10 +5,11 @@ provider:
   runtime: nodejs8.10
   memorySize: 1024
   timeout: 30
-  stage: prod
+  stage: dev
   region: us-east-1
   role: BucketAccess
   apiName: ${self:service}
+  endpointType: regional
   environment:
     BUCKET: ${self:service}-assets
     SLS_DEBUG: "*"
@@ -29,7 +29,9 @@ functions:
     name: ${self:service}-getImage
     handler: src/getImage.handler
     events:
-      - http: GET {proxy+}
+      - http:
+          method: get
+          path: /{proxy+}
     package:
       include:
         - src/getImage.js
@@ -43,7 +45,9 @@ functions:
     name: ${self:service}-uploadImage
     handler: src/uploadImage.handler
     events:
-      - http: POST /upload
+      - http:
+          method: post
+          path: /upload
     package:
       include:
         - src/uploadImage.js

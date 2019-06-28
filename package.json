@@ -4,7 +4,8 @@
   "description": "Image Processor",
   "main": "index.js",
   "scripts": {
-    "dev": "AWS_REGION=us-east-1 sls offline --port 3333"
+    "dev": "AWS_REGION=us-east-1 sls offline --port 3333",
+    "deploy": "sls deploy"
   },
   "author": "Zack Creach <zackcreach@gmail.com>",
   "dependencies": {

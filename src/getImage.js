@@ -7,13 +7,9 @@ const parseQueryParameters = require("../bin/parseQueryParameters");
 const Errors = require("../bin/errors");
 
 function checkS3(key) {
-  console.log(key);
   return new Promise((resolve, reject) => {
     s3.headObject({ Bucket: process.env.BUCKET, Key: key }, (err, metadata) => {
-      if (
-        (err && ["NotFound", "Forbidden"].indexOf(err.code) > -1) ||
-        key.indexOf("q=auto") !== -1
-      )
+      if (err && ["NotFound", "Forbidden"].indexOf(err.code) > -1)
         return resolve();
       else if (err) {
         const e = Object.assign({}, Errors.SOMETHING_WRONG, { err });
@@ -55,7 +51,6 @@ function stripQueryParams(query) {
 }
 
 function generateKey(image_path, query) {
-  console.log(image_path, query);
   let key = image_path;
   const keys = Object.keys(query);
   if (query && keys.length > 0) {
@@ -106,38 +101,69 @@ function processImage(image_path, query, destination_path) {
         bucket: process.env.BUCKET,
         storage_class: "REDUCED_REDUNDANCY"
       };
-      console.log(JSON.stringify(lambda_data));
-
       return resize(lambda_data);
     })
     .then(() => getS3(destination_path));
 }
 
-module.exports.handler = (event, context, callback) => {
-  const query = stripQueryParams(event.queryStringParameters);
+function modifyQuery(event) {
+  const newQuery = stripQueryParams(event.queryStringParameters);
+  const queryIsBlank =
+    Object.keys(newQuery).length === 0 && newQuery.constructor === Object;
   const userAgent = parser(event.headers["User-Agent"]);
 
-  if (Object.keys(query).length === 0 && query.constructor === Object) {
-    if (
-      userAgent.device.type === "mobile" ||
-      userAgent.device.type === "wearable" ||
-      userAgent.device.type === "tablet"
-    ) {
-      query.w = 800;
-      query.q = 60;
+  // Define and determine device either from custom Cloudfront header or origin request event.
+  const mobile =
+    event.headers["CloudFront-Is-Mobile-Viewer"] === "true" ||
+    userAgent.device.type === "mobile";
+
+  const tablet =
+    event.headers["CloudFront-Is-Tablet-Viewer"] === "true" ||
+    userAgent.device.type === "tablet";
+
+  if (queryIsBlank) {
+    if (mobile || tablet) {
+      newQuery.w = 500;
+      newQuery.q = 75;
     } else {
-      query.w = 1200;
-      query.q = 70;
+      newQuery.w = 700;
+      newQuery.q = 85;
     }
   }
 
-  const key = generateKey(event.path, query);
+  return newQuery;
+}
+
+function modifyPath(path) {
+  let newPath = path;
+  const forwardSlashCount = (newPath.match(/\//g) || []).length;
+  const newFolderName = "_optimized";
+  const pathSplitIntoArray = path.split("/");
+
+  if (forwardSlashCount === 1) {
+    pathSplitIntoArray.unshift(newFolderName);
+  } else {
+    const newFolderNameIndex = pathSplitIntoArray.length - 1;
+    pathSplitIntoArray.splice(newFolderNameIndex, 0, newFolderName);
+  }
+
+  const pathArrayFiltered = pathSplitIntoArray.filter(Boolean);
+  const pathBackToString = pathArrayFiltered.join("/");
+  newPath = pathBackToString;
+
+  return newPath;
+}
+
+module.exports.handler = (event, context, callback) => {
+  const modifiedQuery = modifyQuery(event);
+  const modifiedPath = modifyPath(event.path);
+  const key = generateKey(modifiedPath, modifiedQuery);
 
   return checkS3(key)
     .then(metadata => {
       if (metadata) return getS3(key).then(data => callback(null, data));
-      else if (Object.keys(query).length > 0)
-        return processImage(event.path, query, key).then(data =>
+      else if (Object.keys(modifiedQuery).length > 0)
+        return processImage(event.path, modifiedQuery, key).then(data =>
           callback(null, data)
         );
       return callback(null, Errors.NOT_FOUND);
