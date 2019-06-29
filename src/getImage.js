@@ -155,15 +155,17 @@ function modifyPath(path) {
 }
 
 module.exports.handler = (event, context, callback) => {
+  // Revert '+' characters back to spaces to match keys later in S3
+  const pathWithSpaces = event.path.replace(/\+/g, " ");
   const modifiedQuery = modifyQuery(event);
-  const modifiedPath = modifyPath(event.path);
+  const modifiedPath = modifyPath(pathWithSpaces);
   const key = generateKey(modifiedPath, modifiedQuery);
 
   return checkS3(key)
     .then(metadata => {
       if (metadata) return getS3(key).then(data => callback(null, data));
       else if (Object.keys(modifiedQuery).length > 0)
-        return processImage(event.path, modifiedQuery, key).then(data =>
+        return processImage(pathWithSpaces, modifiedQuery, key).then(data =>
           callback(null, data)
         );
       return callback(null, Errors.NOT_FOUND);
