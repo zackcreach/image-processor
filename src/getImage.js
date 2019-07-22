@@ -1,10 +1,11 @@
 const AWS = require("aws-sdk");
 const parser = require("ua-parser-js");
+const _ = { get: require("lodash/get") };
+
+const utilities = require("../utilities");
+const config = require("../config");
 
 const s3 = new AWS.S3();
-
-const parseQueryParameters = require("../bin/parseQueryParameters");
-const Errors = require("../bin/errors");
 
 function checkS3(key) {
   return new Promise((resolve, reject) => {
@@ -12,7 +13,7 @@ function checkS3(key) {
       if (err && ["NotFound", "Forbidden"].indexOf(err.code) > -1)
         return resolve();
       else if (err) {
-        const e = Object.assign({}, Errors.SOMETHING_WRONG, { err });
+        const e = Object.assign({}, config.errors.SOMETHING_WRONG, { err });
         return reject(e);
       }
       return resolve(metadata);
@@ -23,17 +24,28 @@ function checkS3(key) {
 function getS3(key) {
   return new Promise((resolve, reject) => {
     s3.getObject({ Bucket: process.env.BUCKET, Key: key }, (err, data) => {
-      if (err && err.code == "NotFound") return reject(Errors.NOT_FOUND);
+      if (err && err.code == "NotFound") return reject(config.errors.NOT_FOUND);
       else if (err) {
-        const e = Object.assign({}, Errors.SOMETHING_WRONG, { err });
+        const e = Object.assign({}, config.errors.SOMETHING_WRONG, { err });
         return reject(e);
       }
-      const content_type = data.ContentType;
-      const image = new Buffer(data.Body).toString("base64");
+      const eTag = data.ETag;
+      const contentType = data.ContentType;
+      const lastModified = data.LastModified;
+      const cacheControl = "max-age=31536000";
+
+      const headers = {};
+      if (eTag) headers["ETag"] = eTag;
+      if (contentType) headers["Content-Type"] = contentType;
+      if (lastModified) headers["Last-Modified"] = lastModified;
+      if (cacheControl) headers["cache-control"] = cacheControl;
+
+      const body = new Buffer(data.Body).toString("base64");
+
       return resolve({
         statusCode: 200,
-        headers: { "Content-Type": content_type },
-        body: image,
+        headers,
+        body,
         isBase64Encoded: true
       });
     });
@@ -86,7 +98,7 @@ function processImage(image_path, query, destination_path) {
   image_path = image_path[0] == "/" ? image_path.substring(1) : image_path;
   return checkS3(image_path)
     .then(metadata => {
-      if (!metadata) throw Errors.NOT_FOUND;
+      if (!metadata) throw config.errors.NOT_FOUND;
       console.log(
         "s3 base",
         image_path,
@@ -95,7 +107,7 @@ function processImage(image_path, query, destination_path) {
       );
       const lambda_data = {
         mime_type: metadata.ContentType,
-        resize_options: parseQueryParameters(query),
+        resize_options: utilities.parseQueryParameters(query),
         asset: image_path,
         destination: destination_path,
         bucket: process.env.BUCKET,
@@ -113,16 +125,16 @@ function modifyQuery(event) {
   const userAgent = parser(event.headers["User-Agent"]);
 
   // Define and determine device either from custom Cloudfront header or origin request event.
-  const mobile =
-    event.headers["CloudFront-Is-Mobile-Viewer"] === "true" ||
+  const mobileDevice =
+    _.get(event.headers, "CloudFront-Is-Mobile-Viewer", "") === "true" ||
     userAgent.device.type === "mobile";
 
-  const tablet =
-    event.headers["CloudFront-Is-Tablet-Viewer"] === "true" ||
+  const tabletDevice =
+    _.get(event.headers, "CloudFront-Is-Tablet-Viewer", "") === "true" ||
     userAgent.device.type === "tablet";
 
   if (queryIsBlank) {
-    if (mobile || tablet) {
+    if (mobileDevice || tabletDevice) {
       newQuery.w = 500;
       newQuery.q = 75;
     } else {
@@ -138,7 +150,7 @@ function modifyPath(path) {
   let newPath = path;
   const forwardSlashCount = (newPath.match(/\//g) || []).length;
   const newFolderName = "_optimized";
-  const pathSplitIntoArray = path.split("/");
+  const pathSplitIntoArray = newPath.split("/");
 
   if (forwardSlashCount === 1) {
     pathSplitIntoArray.unshift(newFolderName);
@@ -155,20 +167,30 @@ function modifyPath(path) {
 }
 
 module.exports.handler = (event, context, callback) => {
-  // Revert '+' characters back to spaces to match keys later in S3
+  // If spaces exist in filename, revert '+' (replaced by S3) back to spaces to match original filename
   const pathWithSpaces = event.path.replace(/\+/g, " ");
-  const modifiedQuery = modifyQuery(event);
-  const modifiedPath = modifyPath(pathWithSpaces);
-  const key = generateKey(modifiedPath, modifiedQuery);
+
+  // Define flag variables to determine whether to process the image or serve directly
+  const qualityParam = _.get(event, "queryStringParameters.q", "");
+  const showOriginalImage = qualityParam === "original";
+  const formatsRegex = /(\.(htm|pdf|js|zip|gz|txt)|\/font)/gi;
+  const notImageFormat = pathWithSpaces.search(formatsRegex) !== -1;
+  const dontProcess = notImageFormat || showOriginalImage;
+
+  // Generate S3 key based on flags above
+  const newQuery = dontProcess ? {} : modifyQuery(event);
+  const newPath = dontProcess ? pathWithSpaces : modifyPath(pathWithSpaces);
+  const key = generateKey(newPath, newQuery);
 
   return checkS3(key)
     .then(metadata => {
       if (metadata) return getS3(key).then(data => callback(null, data));
-      else if (Object.keys(modifiedQuery).length > 0)
-        return processImage(pathWithSpaces, modifiedQuery, key).then(data =>
+      else if (Object.keys(newQuery).length > 0) {
+        return processImage(pathWithSpaces, newQuery, key).then(data =>
           callback(null, data)
         );
-      return callback(null, Errors.NOT_FOUND);
+      }
+      return callback(null, config.errors.NOT_FOUND);
     })
     .catch(e => {
       console.log(e);
